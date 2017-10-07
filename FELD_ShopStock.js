@@ -7,15 +7,26 @@ Changelog:
 1.0: initial release
  
 Plugin commands:
+initialise_shop_stock [shop]
+Initialises a shop with the provided name. Run this before using any of the following commands for the shop. Can be used to completely reset a shop if it already exists.
 open_shop [shop]
 close_shop
-set_stock [shop] [item/weapon/armor] [id] [amount]
+refresh_shop [shop]
+Sets the stock of all shop items to their base stock levels.
+set_current_stock [shop] [item/weapon/armor] [id] [amount]
 Sets the specified item's stock in the specified shop to the provided amount.
-change_stock [shop] [item/weapon/armor] [id] [amount]
+set_base_stock [shop] [item/weapon/armor] [id] [amount]
+Sets the specified item's stock in the specified shop to the provided amount.
+change_current_stock [shop] [item/weapon/armor] [id] [amount]
+Adds the specified amount of stock to the specified item. If the value provided is negative, this will subtract stock from the shop (stopping at 0?)
+change_base_stock [shop] [item/weapon/armor] [id] [amount]
 Adds the specified amount of stock to the specified item. If the value provided is negative, this will subtract stock from the shop (stopping at 0?)
 
 Free for use with commercial projects, though I'd appreciate being
 contacted if you do use it in any games, just to know.
+
+Notes:
+Where stock has not been defined, should the shop act as usual with infinite stock? Probably.
  */ 
 (function(){
 	var parameters = PluginManager.parameters('FELD_ShopStock');
@@ -26,48 +37,113 @@ contacted if you do use it in any games, just to know.
 
 	var FELD_ShopStock_aliasPluginCommand = Game_Interpreter.prototype.pluginCommand;
 	
+	function initialiseShopStock(name)
+	{
+		shopStock[name] = Object();
+		shopStock[name]['itemStock'] = Object();
+		shopStock[name]['weaponStock'] = Object();
+		shopStock[name]['armorStock'] = Object();
+		shopStock[name]['itemBaseStock'] = Object();
+		shopStock[name]['weaponBaseStock'] = Object();
+		shopStock[name]['armorBaseStock'] = Object();
+	}
+	
+	function openShop(name)
+	{
+			currentShop = name;
+	}
+	
+	function closeShop()
+	{
+			currentShop = null;
+	}
+	
+	function refreshShop(shopName)
+	{
+		if (shopName in shopStock)
+		{
+			for (var item in shopStock[shopName]['itemStock'])
+			{
+				shopStock[shopName]['itemStock'][item] = shopStock[shopName]['itemBaseStock'][item];
+			}
+			for (var weapon in shopStock[shopName]['weaponStock'])
+			{
+				shopStock[shopName]['weaponStock'][weapon] = shopStock[shopName]['weaponBaseStock'][weapon];
+			}
+			for (var armor in shopStock[shopName]['armorStock'])
+			{
+				shopStock[shopName]['armorStock'][armor] = shopStock[shopName]['armorBaseStock'][armor];
+			}
+		}
+	}
+	
+	function setCurrentStock(shopName, itemType, itemId, stock)
+	{
+		if (itemType == 'item' || itemType == 'weapon' || itemType == 'armor')
+		{
+			shopStock[shopName][itemType]+'Stock'][itemId] = parseInt(stock);
+		}
+	}
+	
+	function setBaseStock(shopName, itemType, itemId, stock)
+	{
+		if (itemType == 'item' || itemType == 'weapon' || itemType == 'armor')
+		{
+			shopStock[shopName][itemType]+'BaseStock'][itemId] = parseInt(stock);
+		}
+	}
+	
+	function changeCurrentStock(shopName, itemType, itemId, stock)
+	{
+		if (itemType == 'item' || itemType == 'weapon' || itemType == 'armor')
+		{
+			shopStock[shopName][itemType]+'Stock'][itemId] += parseInt(stock);
+		}
+	}
+	
+	function changeBaseStock(shopName, itemType, itemId, stock)
+	{
+		if (itemType == 'item' || itemType == 'weapon' || itemType == 'armor')
+		{
+			shopStock[shopName][itemType]+'BaseStock'][itemId] += parseInt(stock);
+		}
+	}
+	
+	// should probably turn a bunch of these into functions.
 	Game_Interpreter.prototype.pluginCommand = function(command, args)
 	{
 		FELD_ShopStock_aliasPluginCommand.call(this,command,args);
-		if(command == "open_shop" && args[0] != null)
+		if(command == "initialise_shop_stock" && args[0] != null)
 		{
-			trackingLabel = args[0];
+			initialiseShopStock(args[0]);
+		}
+		else if(command == "open_shop" && args[0] != null)
+		{
+			openShop(args[0]);
 		}
 		else if(command == "close_shop" && args[0] != null)
 		{
-			trackingLabel = null;
+			closeShop();
 		}
-		else if(command == "set_stock" && args[0] != null && args[1] != null && args[2] != null && args[3] != null)
+		else if(command == "refresh_shop" && args[0] != null)
 		{
-			if (!(args[0] in shopStock))
-			{
-				shopStock[args[0]] = Object();
-				shopStock[args[0]]['itemStock'] = Object();
-				shopStock[args[0]]['weaponStock'] = Object();
-				shopStock[args[0]]['armorStock'] = Object();
-				shopStock[args[0]]['itemBaseStock'] = Object();
-				shopStock[args[0]]['weaponBaseStock'] = Object();
-				shopStock[args[0]]['armorBaseStock'] = Object();
-			}
-			// TODO: make sure args[1] is 'item', 'weapon' or 'armor' exactly
-			// keep track of original stock with second object (for each of items, weapons, armor) storing original stock amount?
-			shopStock[args[0]][args[1]+'Stock'][args[2]] = parseInt(args[3]);
-			shopStock[args[0]][args[1]+'BaseStock'][args[2]] = parseInt(args[3]);
+			refreshShop(args[0]);
 		}
-		else if(command == "change_stock" && args[0] != null && args[1] != null && args[2] != null && args[3] != null)
+		else if(command == "set_current_stock" && args[0] != null && args[1] != null && args[2] != null && args[3] != null)
 		{
-			if (!(args[0] in shopStock))
-			{
-				shopStock[args[0]] = Object();
-				shopStock[args[0]]['items'] = Object();
-				shopStock[args[0]]['weapons'] = Object();
-				shopStock[args[0]]['armor'] = Object();
-				shopStock[args[0]]['itemBaseStock'] = Object();
-				shopStock[args[0]]['weaponBaseStock'] = Object();
-				shopStock[args[0]]['armorBaseStock'] = Object();
-			}
-			// TODO: make sure args[1] is 'item', 'weapon' or 'armor' exactly
-			shopStock[args[0]][args[0]+'Stock'][args[2]] = parseInt(args[3]);
+			setCurrentStock(args[0], args[1], args[2], args[3]);
+		}
+		else if(command == "set_base_stock" && args[0] != null && args[1] != null && args[2] != null && args[3] != null)
+		{
+			setBaseStock(args[0], args[1], args[2], args[3]);
+		}
+		else if(command == "change_current_stock" && args[0] != null && args[1] != null && args[2] != null && args[3] != null)
+		{
+			changeCurrentStock(args[0], args[1], args[2], args[3]);
+		}
+		else if(command == "change_base_stock" && args[0] != null && args[1] != null && args[2] != null && args[3] != null)
+		{
+			changeBaseStock(args[0], args[1], args[2], args[3]);
 		}
 	}
 })();
