@@ -30,7 +30,9 @@ Free for use with commercial projects, though I'd appreciate being
 contacted if you do use it in any games, just to know.
 
 Notes:
-Where stock has not been defined, should the shop act as usual with infinite stock? Probably.
+Where stock has not been defined, the shop acts as if it has infinite stock
+	This means selling items to a shop with infinite copies of it should not result in the stock suddenly becoming limited
+Should stock be stored as a float? Can still provide an integer value with Math.floor().
  */ 
 (function(){
 	var parameters = PluginManager.parameters('FELD_ShopStock');
@@ -38,8 +40,6 @@ Where stock has not been defined, should the shop act as usual with infinite sto
 	var currentShop = null;
 	
 	var shopStock = Object();
-
-	var FELD_ShopStock_aliasPluginCommand = Game_Interpreter.prototype.pluginCommand;
 	
 	function initialiseShopStock(name)
 	{
@@ -172,6 +172,10 @@ Where stock has not been defined, should the shop act as usual with infinite sto
 		if (itemType == 'item' || itemType == 'weapon' || itemType == 'armor')
 		{
 			shopStock[shopName][itemType+'Stock'][parseInt(itemId)] += parseInt(stock);
+			if (shopStock[shopName][itemType+'Stock'][parseInt(itemId)] < 0)
+			{
+				shopStock[shopName][itemType+'Stock'][parseInt(itemId)] = 0;
+			}
 		}
 	}
 	
@@ -180,17 +184,18 @@ Where stock has not been defined, should the shop act as usual with infinite sto
 		if (itemType == 'item' || itemType == 'weapon' || itemType == 'armor')
 		{
 			shopStock[shopName][itemType+'BaseStock'][parseInt(itemId)] += parseInt(stock);
+			if (shopStock[shopName][itemType+'BaseStock'][parseInt(itemId)] < 0)
+			{
+				shopStock[shopName][itemType+'BaseStock'][parseInt(itemId)] = 0;
+			}
 		}
 	}
 	
-	// gets the item, but not currently returning stock properly
 	getItemStock = function(shop, item)
 	{
 		var stock = undefined;
 		
 		stock = getCurrentStock(shop, item);
-		
-		console.log(stock);
 		
 		return stock;
 	}
@@ -227,6 +232,26 @@ Where stock has not been defined, should the shop act as usual with infinite sto
 		}
 	};
 	
+	var oldIsEnabled = Window_ShopBuy.prototype.isEnabled;
+	Window_ShopBuy.prototype.isEnabled = function(item) 
+	{
+		var isBuyable = oldIsEnabled.call(this, item);
+		console.log(item);
+		if (isBuyable)
+		{
+			var stock = getItemStock(currentShop, item);
+			if (!(stock === undefined))
+			{
+				if (stock >= 1)
+				{
+					isBuyable = true;
+				}
+			}
+		}
+		return isBuyable;
+	};
+	
+	var FELD_ShopStock_aliasPluginCommand = Game_Interpreter.prototype.pluginCommand;
 	Game_Interpreter.prototype.pluginCommand = function(command, args)
 	{
 		FELD_ShopStock_aliasPluginCommand.call(this,command,args);
