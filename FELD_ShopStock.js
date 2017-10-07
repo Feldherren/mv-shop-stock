@@ -81,7 +81,7 @@ Where stock has not been defined, should the shop act as usual with infinite sto
 	{
 		if (itemType == 'item' || itemType == 'weapon' || itemType == 'armor')
 		{
-			shopStock[shopName][itemType]+'Stock'][itemId] = parseInt(stock);
+			shopStock[shopName][itemType+'Stock'][itemId] = parseInt(stock);
 		}
 	}
 	
@@ -89,7 +89,7 @@ Where stock has not been defined, should the shop act as usual with infinite sto
 	{
 		if (itemType == 'item' || itemType == 'weapon' || itemType == 'armor')
 		{
-			shopStock[shopName][itemType]+'BaseStock'][itemId] = parseInt(stock);
+			shopStock[shopName][itemType+'BaseStock'][itemId] = parseInt(stock);
 		}
 	}
 	
@@ -97,7 +97,7 @@ Where stock has not been defined, should the shop act as usual with infinite sto
 	{
 		if (itemType == 'item' || itemType == 'weapon' || itemType == 'armor')
 		{
-			shopStock[shopName][itemType]+'Stock'][itemId] += parseInt(stock);
+			shopStock[shopName][itemType+'Stock'][itemId] += parseInt(stock);
 		}
 	}
 	
@@ -105,7 +105,7 @@ Where stock has not been defined, should the shop act as usual with infinite sto
 	{
 		if (itemType == 'item' || itemType == 'weapon' || itemType == 'armor')
 		{
-			shopStock[shopName][itemType]+'BaseStock'][itemId] += parseInt(stock);
+			shopStock[shopName][itemType+'BaseStock'][itemId] += parseInt(stock);
 		}
 	}
 	
