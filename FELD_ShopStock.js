@@ -104,7 +104,7 @@ Should stock be stored as a float? Can still provide an integer value with Math.
 	{
 		stock = undefined;
 		
-		//console.log(shopStock);
+		console.log(item);
 		
 		if (shopName != null)
 		{
@@ -190,15 +190,16 @@ Should stock be stored as a float? Can still provide an integer value with Math.
 			}
 		}
 	}
-	
-	getItemStock = function(shop, item)
-	{
-		var stock = undefined;
+
+	// this is pretty spare, since all it does is calls getCurrentStock and returns what it returns
+	// function getItemStock(shop, item)
+	// {
+		// var stock = undefined;
 		
-		stock = getCurrentStock(shop, item);
+		// stock = getCurrentStock(shop, item);
 		
-		return stock;
-	}
+		// return stock;
+	// }
 	
 	// overwrite; need to draw stock, but drawItemName is used elsewhere, so we're replacing the use of drawItemName with drawShopItemName
 	var oldDrawItem = Window_ShopBuy.prototype.drawItem;
@@ -220,7 +221,7 @@ Should stock be stored as a float? Can still provide an integer value with Math.
 			var iconBoxWidth = Window_Base._iconWidth + 4;
 			this.resetTextColor();
 			this.drawIcon(item.iconIndex, x + 2, y + 2);
-			var stock = getItemStock(currentShop, item);
+			var stock = getCurrentStock(currentShop, item);
 			if (!(stock === undefined))
 			{
 				this.drawText(item.name + " (" + stock + ")", x + iconBoxWidth, y, width - iconBoxWidth);
@@ -232,24 +233,47 @@ Should stock be stored as a float? Can still provide an integer value with Math.
 		}
 	};
 	
+	//TODO: currently not stopping an item from being buyable if stock is at 0
 	var oldIsEnabled = Window_ShopBuy.prototype.isEnabled;
 	Window_ShopBuy.prototype.isEnabled = function(item) 
 	{
 		var isBuyable = oldIsEnabled.call(this, item);
-		console.log(item);
 		if (isBuyable)
 		{
-			var stock = getItemStock(currentShop, item);
+			var stock = getCurrentStock(currentShop, item);
 			if (!(stock === undefined))
 			{
-				if (stock >= 1)
+				if (stock <= 0)
 				{
-					isBuyable = true;
+					isBuyable = false;
 				}
 			}
 		}
 		return isBuyable;
 	};
+	
+	// can still buy past stock, annoyingly; need to fix that. Somehow prevent player from scrolling up past stock limit?
+	// can still buy at 0 stock?
+	var oldDoBuy = Scene_Shop.prototype.doBuy;
+	Scene_Shop.prototype.doBuy = function(number) 
+	{
+		oldDoBuy.call(this, number);
+		console.log(this._item);
+		if (DataManager.isItem(this._item)) // item
+		{
+			changeCurrentStock(currentShop, 'item', this._item.id, number*-1);
+		}
+		else if (DataManager.isWeapon(this._item)) // weapon
+		{
+			changeCurrentStock(currentShop, 'weapon', this._item.id, number*-1);
+		}
+		else if (DataManager.isArmor(this._item)) // armor
+		{
+			changeCurrentStock(currentShop, 'armor', this._item.id, number*-1);
+		}
+		console.log(this._item);
+		console.log(getCurrentStock(currentShop, this._item));
+	}
 	
 	var FELD_ShopStock_aliasPluginCommand = Game_Interpreter.prototype.pluginCommand;
 	Game_Interpreter.prototype.pluginCommand = function(command, args)
