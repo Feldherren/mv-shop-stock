@@ -109,7 +109,36 @@ Where stock has not been defined, should the shop act as usual with infinite sto
 		}
 	}
 	
-	// should probably turn a bunch of these into functions.
+	function getItemStock(item)
+	{
+		stock = 0;
+		return stock;
+	}
+	
+	// overwrite; need to draw stock, too
+	var oldDrawItem = Window_ShopBuy.prototype.drawItem;
+	Window_ShopBuy.prototype.drawItem = function(index) {
+		var item = this._data[index];
+		var rect = this.itemRect(index);
+		var priceWidth = 96;
+		rect.width -= this.textPadding();
+		this.changePaintOpacity(this.isEnabled(item));
+		this.drawShopItemName(item, rect.x, rect.y, rect.width - priceWidth);
+		this.drawText(this.price(item), rect.x + rect.width - priceWidth,
+					  rect.y, priceWidth, 'right');
+		this.changePaintOpacity(true);
+	};
+
+	Window_ShopBuy.prototype.drawShopItemName = function(item, x, y, width) {
+		width = width || 312;
+		if (item) {
+			var iconBoxWidth = Window_Base._iconWidth + 4;
+			this.resetTextColor();
+			this.drawIcon(item.iconIndex, x + 2, y + 2);
+			this.drawText(item.name + " (" + getItemStock(item) + ")", x + iconBoxWidth, y, width - iconBoxWidth);
+		}
+	};
+	
 	Game_Interpreter.prototype.pluginCommand = function(command, args)
 	{
 		FELD_ShopStock_aliasPluginCommand.call(this,command,args);
