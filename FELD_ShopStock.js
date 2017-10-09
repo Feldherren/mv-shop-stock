@@ -3,18 +3,33 @@
  * @author Feldherren
  * @help Shop Stock v1.0.0, by Feldherren (rpaliwoda AT googlemail.com)
  *
- * @param Refresh resets stock to base levels
- * @desc Whether refresh resets stock to base levels (true) or adds base stock to current stock (false); true/false; NOTE NOT FUNCTIONAL YET
+ * @param refreshAddsStock
+ * @text Refresh adds base stock to current stock
+ * @desc Instead of resetting stock to base levels, refreshing a shop adds base stock to current stock levels. NOT CURRENTLY IMPLEMENTED
+ * @type boolean
+ * @default false
+ *
+ * @param addStockOnSell
+ * @text Stock increases if copies of items are sold to shop
+ * @desc Shop stock increases when copies of items are sold to the shop.
+ * @type boolean
  * @default true
+ *
+ * @help Item Stock v0.1.0, by Feldherren (rpaliwoda AT googlemail.com) 
  
 Changelog:
-1.0: initial release
+0.1.0:	initial version; supports setting up shops, setting stock for items 
+		in these shops, and limits the number of items that can be bought based 
+		on remaining stock. If stock is not set for an item, buying that item is 
+		not restricted.
  
 Plugin commands:
 initialise_shop_stock [shop]
 Initialises a shop with the provided name. Run this before using any of the following commands for the shop. Can be used to completely reset a shop if it already exists.
 open_shop [shop]
+Sets the named shop as the current shop; stock information will be selected based on this.
 close_shop
+Clears the current shop.
 refresh_shop [shop]
 Sets the stock of all shop items to their base stock levels.
 set_current_stock [shop] [item/weapon/armor] [id] [amount]
@@ -33,9 +48,15 @@ Notes:
 Where stock has not been defined, the shop acts as if it has infinite stock
 	This means selling items to a shop with infinite copies of it should not result in the stock suddenly becoming limited
 Should stock be stored as a float? Can still provide an integer value with Math.floor().
+
+TODO: implement varying refresh functionality
+TODO: last pass before release; hunt down bugs, check formatting.
  */ 
 (function(){
 	var parameters = PluginManager.parameters('FELD_ShopStock');
+	
+	var addStockOnSell = (parameters["addStockOnSell"] == 'true');
+	console.log(addStockOnSell);
 	
 	var currentShop = null;
 	
@@ -54,12 +75,12 @@ Should stock be stored as a float? Can still provide an integer value with Math.
 	
 	function openShop(name)
 	{
-			currentShop = name;
+		currentShop = name;
 	}
 	
 	function closeShop()
 	{
-			currentShop = null;
+		currentShop = null;
 	}
 	
 	function refreshShop(shopName)
@@ -88,6 +109,7 @@ Should stock be stored as a float? Can still provide an integer value with Math.
 	}
 	
 	// refreshes ALL shops currently defined
+	// TODO: do this
 	function refreshAllShops()
 	{
 	}
@@ -149,17 +171,17 @@ Should stock be stored as a float? Can still provide an integer value with Math.
 			console.log("getting base stock for " + item.name + " in " + shopName);
 			if (DataManager.isItem(item)) // item
 			{
-				console.log(item.name + " is an item");
+				//console.log(item.name + " is an item");
 				stock = shopStock[currentShop]['itemBaseStock'][item.id];
 			}
 			else if (DataManager.isWeapon(item)) // weapon
 			{
-				console.log(item.name + " is a weapon");
+				//console.log(item.name + " is a weapon");
 				stock = shopStock[currentShop]['weaponBaseStock'][item.id];
 			}
 			else if (DataManager.isArmor(item)) // armor
 			{
-				console.log(item.name + " is armor");
+				//console.log(item.name + " is armor");
 				stock = shopStock[currentShop]['armorBaseStock'][item.id];
 			}
 		}
@@ -190,16 +212,6 @@ Should stock be stored as a float? Can still provide an integer value with Math.
 			}
 		}
 	}
-
-	// this is pretty spare, since all it does is calls getCurrentStock and returns what it returns
-	// function getItemStock(shop, item)
-	// {
-		// var stock = undefined;
-		
-		// stock = getCurrentStock(shop, item);
-		
-		// return stock;
-	// }
 	
 	// overwrite; need to draw stock, but drawItemName is used elsewhere, so we're replacing the use of drawItemName with drawShopItemName
 	var oldDrawItem = Window_ShopBuy.prototype.drawItem;
@@ -233,7 +245,7 @@ Should stock be stored as a float? Can still provide an integer value with Math.
 		}
 	};
 	
-	//TODO: currently not stopping an item from being buyable if stock is at 0
+	// adding an extra check here to ensure the shop still has stock for the item in question
 	var oldIsEnabled = Window_ShopBuy.prototype.isEnabled;
 	Window_ShopBuy.prototype.isEnabled = function(item) 
 	{
@@ -252,28 +264,72 @@ Should stock be stored as a float? Can still provide an integer value with Math.
 		return isBuyable;
 	};
 	
-	// can still buy past stock, annoyingly; need to fix that. Somehow prevent player from scrolling up past stock limit?
-	// can still buy at 0 stock?
+	// removes stock from the shop after you buy something
 	var oldDoBuy = Scene_Shop.prototype.doBuy;
 	Scene_Shop.prototype.doBuy = function(number) 
 	{
 		oldDoBuy.call(this, number);
-		console.log(this._item);
-		if (DataManager.isItem(this._item)) // item
+		if (!(stock === undefined))
 		{
-			changeCurrentStock(currentShop, 'item', this._item.id, number*-1);
+			if (DataManager.isItem(this._item)) // item
+			{
+				changeCurrentStock(currentShop, 'item', this._item.id, number*-1);
+			}
+			else if (DataManager.isWeapon(this._item)) // weapon
+			{
+				changeCurrentStock(currentShop, 'weapon', this._item.id, number*-1);
+			}
+			else if (DataManager.isArmor(this._item)) // armor
+			{
+				changeCurrentStock(currentShop, 'armor', this._item.id, number*-1);
+			}
 		}
-		else if (DataManager.isWeapon(this._item)) // weapon
-		{
-			changeCurrentStock(currentShop, 'weapon', this._item.id, number*-1);
-		}
-		else if (DataManager.isArmor(this._item)) // armor
-		{
-			changeCurrentStock(currentShop, 'armor', this._item.id, number*-1);
-		}
-		console.log(this._item);
-		console.log(getCurrentStock(currentShop, this._item));
 	}
+	
+	// adding an extra check to make sure player can't buy more than stock by just requesting more
+	var oldMaxBuy = Scene_Shop.prototype.maxBuy;
+	Scene_Shop.prototype.maxBuy = function()
+	{
+		var max = oldMaxBuy.call(this);
+		// check if max is higher than stock. If so, set max to stock.
+		var stock = getCurrentStock(currentShop, this._item)
+		if (!(stock === undefined))
+		{
+			if (max > stock)
+			{
+				max = stock;
+			}
+		}
+		return max;
+	}
+
+	// adding stock back on sell, if the plugin is set up to do it
+	var oldDoSell = Scene_Shop.prototype.doSell;
+	Scene_Shop.prototype.doSell = function(number) {
+		oldDoSell.call(this, number);
+		var stock = getCurrentStock(currentShop, this._item);
+		if (!(stock === undefined))
+		{
+			if (addStockOnSell)
+			{
+				if (currentShop != null)
+				{
+					if (DataManager.isItem(this._item)) // item
+					{
+						changeCurrentStock(currentShop, 'item', this._item.id, number);
+					}
+					else if (DataManager.isWeapon(this._item)) // weapon
+					{
+						changeCurrentStock(currentShop, 'weapon', this._item.id, number);
+					}
+					else if (DataManager.isArmor(this._item)) // armor
+					{
+						changeCurrentStock(currentShop, 'armor', this._item.id, number);
+					}
+				}
+			}
+		}
+	};
 	
 	var FELD_ShopStock_aliasPluginCommand = Game_Interpreter.prototype.pluginCommand;
 	Game_Interpreter.prototype.pluginCommand = function(command, args)
