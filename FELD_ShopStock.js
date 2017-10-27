@@ -4,14 +4,14 @@
  * @help Shop Stock v1.0.0, by Feldherren (rpaliwoda AT googlemail.com)
  *
  * @param refreshAddsStock
- * @text Refresh adds base stock to current stock
- * @desc Instead of resetting stock to base levels, refreshing a shop adds base stock to current stock levels. NOT CURRENTLY IMPLEMENTED
+ * @text Refreshing adds stock
+ * @desc Sets the default refresh behaviour for shops; whether refreshing will add to current shop stock, or replace it.
  * @type boolean
  * @default false
  *
  * @param addStockOnSell
- * @text Stock increases if copies of items are sold to shop
- * @desc Shop stock increases when copies of items are sold to the shop.
+ * @text Selling adds stock
+ * @desc Sets the default behaviour for shops when selling; whether shop stock increases when copies of items are sold to the shop.
  * @type boolean
  * @default true
  *
@@ -50,13 +50,12 @@ Where stock has not been defined, the shop acts as if it has infinite stock
 Should stock be stored as a float? Can still provide an integer value with Math.floor().
 
 TODO: implement varying refresh functionality
+TODO: work out why refreshing a shop multiple times removed lumber?
+TODO: means of setting refreshAddsStock and addStockOnSell behaviour for individual shops
 TODO: last pass before release; hunt down bugs, check formatting.
  */ 
 (function(){
 	var parameters = PluginManager.parameters('FELD_ShopStock');
-	
-	var addStockOnSell = (parameters["addStockOnSell"] == 'true');
-	console.log(addStockOnSell);
 	
 	var currentShop = null;
 	
@@ -71,6 +70,8 @@ TODO: last pass before release; hunt down bugs, check formatting.
 		shopStock[name]['itemBaseStock'] = Object();
 		shopStock[name]['weaponBaseStock'] = Object();
 		shopStock[name]['armorBaseStock'] = Object();
+		shopStock[name].refreshAddsStock = (parameters["refreshAddsStock"] == 'true');
+		shopStock[name].addStockOnSell = (parameters["addStockOnSell"] == 'true');
 	}
 	
 	function openShop(name)
@@ -92,18 +93,58 @@ TODO: last pass before release; hunt down bugs, check formatting.
 			//console.log(shopStock[shopName]['itemStock']);
 			for (var item in shopStock[shopName]['itemBaseStock'])
 			{
-				//console.log(item);
-				setCurrentStock(shopName, 'item', item, shopStock[shopName]['itemBaseStock'][item]);
+				console.log(item);
+				if (shopStock[shopName].refreshAddsStock)
+				{
+					if (typeof shopStock[shopName]['itemStock'][item] != 'undefined')
+					{
+						setCurrentStock(shopName, 'item', item, shopStock[shopName]['itemBaseStock'][item] + shopStock[shopName]['itemStock'][item]);
+					}
+					else
+					{
+						setCurrentStock(shopName, 'item', item, shopStock[shopName]['itemBaseStock'][item]);
+					}
+				}
+				else
+				{
+					setCurrentStock(shopName, 'item', item, shopStock[shopName]['itemBaseStock'][item]);
+				}
 			}
 			for (var weapon in shopStock[shopName]['weaponBaseStock'])
 			{
-				//shopStock[shopName]['weaponStock'][weapon] = shopStock[shopName]['weaponBaseStock'][weapon];
-				setCurrentStock(shopName, 'weapon', weapon, shopStock[shopName]['itemBaseStock'][item]);
+				if (shopStock[shopName].refreshAddsStock)
+				{
+					if (typeof shopStock[shopName]['itemStock'][item] != 'undefined')
+					{
+						setCurrentStock(shopName, 'weapon', weapon, shopStock[shopName]['weaponBaseStock'][item] + shopStock[shopName]['weaponStock'][item]);
+					}
+					else
+					{
+						setCurrentStock(shopName, 'weapon', weapon, shopStock[shopName]['weaponBaseStock'][item]);
+					}
+				}
+				else
+				{
+					setCurrentStock(shopName, 'weapon', weapon, shopStock[shopName]['weaponBaseStock'][item]);
+				}
 			}
 			for (var armor in shopStock[shopName]['armorBaseStock'])
 			{
-				//shopStock[shopName]['armorStock'][armor] = shopStock[shopName]['armorBaseStock'][armor];
-				setCurrentStock(shopName, 'armor', armor, shopStock[shopName]['itemBaseStock'][item]);
+				if (shopStock[shopName].refreshAddsStock)
+				{
+					if (typeof shopStock[shopName]['itemStock'][item] != 'undefined')
+					{
+						setCurrentStock(shopName, 'armor', armor, shopStock[shopName]['armorBaseStock'][item] + shopStock[shopName]['armorStock'][item]);
+					}
+					else
+					{
+						setCurrentStock(shopName, 'armor', armor, shopStock[shopName]['armorBaseStock'][item]);
+					}
+				}
+				else
+				{
+					setCurrentStock(shopName, 'armor', armor, shopStock[shopName]['armorBaseStock'][item]);
+				}
 			}
 		}
 	}
@@ -125,8 +166,6 @@ TODO: last pass before release; hunt down bugs, check formatting.
 	function getCurrentStock(shopName, item)
 	{
 		stock = undefined;
-		
-		console.log(item);
 		
 		if (shopName != null)
 		{
@@ -310,7 +349,7 @@ TODO: last pass before release; hunt down bugs, check formatting.
 		var stock = getCurrentStock(currentShop, this._item);
 		if (!(stock === undefined))
 		{
-			if (addStockOnSell)
+			if (shopStock[currentShop].addStockOnSell)
 			{
 				if (currentShop != null)
 				{
