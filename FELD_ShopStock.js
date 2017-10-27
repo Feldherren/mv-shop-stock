@@ -18,6 +18,11 @@
  * @help Item Stock v0.1.0, by Feldherren (rpaliwoda AT googlemail.com) 
  
 Changelog:
+0.2.0:	shops now have individual behaviours for whether refreshing adds or 
+		replaces current stock, and whether stock is added to the shop when
+		selling. The default is set via plugin parameters, whilst a specific
+		shop's behaviour can be set via plugin command.
+		Can now refresh all defined shops with a single plugin command.
 0.1.0:	initial version; supports setting up shops, setting stock for items 
 		in these shops, and limits the number of items that can be bought based 
 		on remaining stock. If stock is not set for an item, buying that item is 
@@ -31,7 +36,9 @@ Sets the named shop as the current shop; stock information will be selected base
 close_shop
 Clears the current shop.
 refresh_shop [shop]
-Sets the stock of all shop items to their base stock levels.
+Applies refresh behaviour for the specified shop.
+refresh_all_shops
+Applies refresh behaviour for every shop.
 set_current_stock [shop] [item/weapon/armor] [id] [amount]
 Sets the specified item's stock in the specified shop to the provided amount.
 set_base_stock [shop] [item/weapon/armor] [id] [amount]
@@ -40,6 +47,10 @@ change_current_stock [shop] [item/weapon/armor] [id] [amount]
 Adds the specified amount of stock to the specified item. If the value provided is negative, this will subtract stock from the shop (stopping at 0?)
 change_base_stock [shop] [item/weapon/armor] [id] [amount]
 Adds the specified amount of stock to the specified item. If the value provided is negative, this will subtract stock from the shop (stopping at 0?)
+set_sellAddsStock [shop] [true/false]
+Sets the shop behaviour for whether or not selling items to it adds stock.
+set_refreshAddsStock [shop] [true/false]
+Sets the shop behaviour for whether or not refreshing it adds stock or replaces current stock.
 
 Free for use with commercial projects, though I'd appreciate being
 contacted if you do use it in any games, just to know.
@@ -49,9 +60,6 @@ Where stock has not been defined, the shop acts as if it has infinite stock
 	This means selling items to a shop with infinite copies of it should not result in the stock suddenly becoming limited
 Should stock be stored as a float? Can still provide an integer value with Math.floor().
 
-TODO: implement varying refresh functionality
-TODO: work out why refreshing a shop multiple times removed lumber?
-TODO: means of setting refreshAddsStock and addStockOnSell behaviour for individual shops
 TODO: last pass before release; hunt down bugs, check formatting.
  */ 
 (function(){
@@ -86,14 +94,10 @@ TODO: last pass before release; hunt down bugs, check formatting.
 	
 	function refreshShop(shopName)
 	{
-		//console.log("refreshing stock for " + shopName);
 		if (shopName in shopStock)
 		{
-			//console.log(shopName + " is in shopStock");
-			//console.log(shopStock[shopName]['itemStock']);
 			for (var item in shopStock[shopName]['itemBaseStock'])
 			{
-				console.log(item);
 				if (shopStock[shopName].refreshAddsStock)
 				{
 					if (typeof shopStock[shopName]['itemStock'][item] != 'undefined')
@@ -153,6 +157,10 @@ TODO: last pass before release; hunt down bugs, check formatting.
 	// TODO: do this
 	function refreshAllShops()
 	{
+		for (var shop in shopStock)
+		{
+			refreshShop(shop);
+		}
 	}
 	
 	function setCurrentStock(shopName, itemType, itemId, stock)
@@ -390,6 +398,10 @@ TODO: last pass before release; hunt down bugs, check formatting.
 		{
 			refreshShop(args[0]);
 		}
+		else if(command == "refresh_all_shops")
+		{
+			refreshAllShops();
+		}
 		else if(command == "set_current_stock" && args[0] != null && args[1] != null && args[2] != null && args[3] != null)
 		{
 			setCurrentStock(args[0], args[1], args[2], args[3]);
@@ -405,6 +417,14 @@ TODO: last pass before release; hunt down bugs, check formatting.
 		else if(command == "change_base_stock" && args[0] != null && args[1] != null && args[2] != null && args[3] != null)
 		{
 			changeBaseStock(args[0], args[1], args[2], args[3]);
+		}
+		else if(command == "set_sellAddsStock" && args[0] != null && args[1] != null)
+		{
+			shopStock[args[0]].sellAddsStock = (args[1] == 'true');
+		}
+		else if(command == "set_refreshAddsStock" && args[0] != null && args[1] != null)
+		{
+			shopStock[args[0]].refreshAddsStock = (args[1] == 'true');
 		}
 	}
 })();
